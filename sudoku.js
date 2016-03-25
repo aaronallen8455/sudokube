@@ -19,7 +19,7 @@ window.onload = function() {
         this.cubeIndex = grid.cubes.indexOf(cube);
         //array of possible values for this cell
         this.possibleValues = charArray.slice(0);
-        this.coords = {x: row.cells.length-1, y: column.cells.length-1, z: hall.cells.length-1};
+        this.coords = {x: row.cells.length-1, z: column.cells.length-1, y: hall.cells.length-1};
         this.value = null;
         this.displayedValue = null;
     }

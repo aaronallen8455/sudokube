@@ -54,8 +54,8 @@ Cell.prototype.assignRandomValue = function() {
                 for (var i=0; i<this.cube.cells.length; i++) {
                     var c = this.cube.cells[i];
                     if (c.getRowOutsideBox().every(function(x){return x.value !== needed;}) && this.getRowOutsideBox().every(function(x){return x.value !== c.value;})) {
-                        //if (c.getColOutsideBox().every(function(x){return x.value !== needed;}) && this.getColOutsideBox().every(function(x){return x.value !== c.value;})) {
-                            if (c.getHallOutsideBox().every(function(x){return x.value !== needed;}) && this.getHallOutsideBox().every(function(x){return x.value !== c.value;})) {
+                        if (c.getColOutsideBox().every(function(x){return x.value !== needed;}) && this.getColOutsideBox().every(function(x){return x.value !== c.value;})) {
+                            //if (c.getHallOutsideBox().every(function(x){return x.value !== needed;}) && this.getHallOutsideBox().every(function(x){return x.value !== c.value;})) {
                                 //this cell fits the bill. assign its value to the undefined cell
                                 this.value = this.displayedValue = c.value;
                                 //then give it the needed value
@@ -73,7 +73,7 @@ Cell.prototype.assignRandomValue = function() {
                                         cell.possibleValues.push(this.value);
                                     }
                                 }
-                                /*var col = c.getColOutsideBox();
+                                var col = c.getColOutsideBox();
                                 for (var i = 0; i < col.length; i++) {
                                     var cell = col[i];
                                     var index = cell.possibleValues.indexOf(needed);
@@ -82,8 +82,8 @@ Cell.prototype.assignRandomValue = function() {
                                     //re-add old value if necessary
                                     if (this.value !== undefined && cell.checkValue(this.value))
                                         cell.possibleValues.push(this.value);
-                                }*/
-                                var hall = c.getHallOutsideBox();
+                                }
+                                /*var hall = c.getHallOutsideBox();
                                 for (var i = 0; i < hall.length; i++) {
                                     var cell = hall[i];
                                     var index = cell.possibleValues.indexOf(needed);
@@ -92,7 +92,7 @@ Cell.prototype.assignRandomValue = function() {
                                     //re-add old value if necessary
                                     if (this.value !== undefined && cell.checkValue(this.value))
                                         cell.possibleValues.push(this.value);
-                                }
+                                }*/
                                 if (this.value === undefined)
                                     continue out;
                                 else break out;
@@ -104,8 +104,8 @@ Cell.prototype.assignRandomValue = function() {
     } //end of undefined if
     //remove that number from all group members
     this.row.removeValue(this.value);
-    //this.column.removeValue(this.value);
-    this.hall.removeValue(this.value);
+    this.column.removeValue(this.value);
+    //this.hall.removeValue(this.value);
     this.cube.removeValue(this.value);
     this.displayedValue = this.value;
     return this;
@@ -174,7 +174,7 @@ Group.prototype.getPresentValues = function() {
     //array of all presently displayed values
     var array = [];
     for (var i=0; i<this.cells.length; i++) {
-        if (this.cells[i].displayedValue !== '')
+        if (this.cells[i].displayedValue !== '' && this.cells[i].displayedValue !== undefined)
             array.push(this.cells[i].displayedValue);
     }
     //add in the previously hidden cell's value if its in this group
@@ -193,6 +193,14 @@ Group.prototype.getBlanks = function() {
     }
     if (blanks.length === 0) return false;
     else return blanks;
+};
+Group.prototype.resetCells = function() {
+    //reset cells to starting condition
+    for (var i=0; i<this.cells.length; i++) {
+        this.cells[i].value = undefined;
+        this.cells[i].displayedValue = undefined;
+        this.cells[i].possibleValues = charArray.slice(0);
+    }
 };
 
 //define sudoku grid class
@@ -227,34 +235,61 @@ function Grid() {
 }
 Grid.prototype.generate = function() {
     //var order = [5,6,9,10,1,2,4,7,8,11,13,14,0,3,15,12];
-    for (var u=0; u<2; u++)
-    for (var i=0; i<this.cubes.length; i++) {
 
-        for (var t=0; t<100; t++) {
-            for (var c=0; c<this.cells.length; c++) {
-                this.cells[c].save(); //save state
-            }
-            this.rows[i].cells.forEach(function (x) {
-                x.assignRandomValue();
-            });
+    //generate the cubes in segments for efficiency
+    var numSeg = base/Math.cbrt(base);
+    var cubesPerSeg = Math.pow(numSeg,2);
+    //do each segment individually
+    var isRunning = true;
+    for (var n=0; n<numSeg; n++) {
+        var segment = this.rows.slice(n*cubesPerSeg, n*cubesPerSeg+cubesPerSeg);
+        while(isRunning) {
+            for (var p=0; p<cubesPerSeg; p++) {
 
-            //if we got an undefined, try again
-            if (this.rows[i].cells.some(function (x) {
-                    return x.value === undefined
-                }) && t !== 99) {
-                for (var c=0; c<this.cells.length; c++) { //revert state
-                    this.cells[c].revert();
+                for (var t=0; t<100; t++) {
+                    for (var c=0; c<this.cells.length; c++) {
+                        this.cells[c].save(); //save state
+                    }
+                    segment[p].cells.forEach(function (x) {
+                        x.assignRandomValue();
+                    });
+
+                    //if we got an undefined, try again
+                    if (segment[p].cells.some(function (x) {
+                            return x.value === undefined
+                        }) && t !== 99) {
+                        for (var c=0; c<this.cells.length; c++) { //revert state
+                            this.cells[c].revert();
+                        }
+                    }else break;
                 }
-            }else break;
+            }
+            //if no errors in this segment, move on. otherwise reset cells and start over
+            if (segment.every(function (x) {
+                    return x.getPresentValues().length === base;
+                })) {
+                isRunning = false;
+            }else{
+                //reset cells
+                segment.forEach(function (x) {
+                    x.resetCells();
+                })
+            }
+            //isRunning = false;
         }
-        //if (this.cubes[i].cells.some(function(x){return x.value === undefined}))
-            //break; //abort
+        //go to next segment
+        isRunning = true;
     }
+
+
+    //if (this.cubes[i].cells.some(function(x){return x.value === undefined}))
+        //break; //abort
+
     //do an additional pass for good measure
 
 
-    //if (true) {
-    if (!this.cells.some(function(x){return x.value === undefined;})) {
+    if (true) {
+    //if (!this.cells.some(function(x){return x.value === undefined;})) {
     //if (this.cells.filter(function(x){return x.value === undefined}).length < 2) {
         //puzzle was successfully created
         //stringify it and send to main thread.

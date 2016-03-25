@@ -276,7 +276,6 @@ function draw(camera, canvas, verts) {
 
         //draw background
         var odd = vert.cell.cubeIndex % 2;
-        //todo: each cube needs a unique color. apply distance to black channel?
         ctx.fillStyle = "hsl(" + ((odd?vert.cell.cubeIndex:63-vert.cell.cubeIndex) * 360/64) + ", " + (odd?'100%':'50%') + ", 50%";
         ctx.fillRect(coords[0]-drawSize/2,coords[1]-drawSize/2,drawSize,drawSize);
         //draw value
